@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Filter, Calendar, Edit2, Eye, Trash2 } from 'lucide-react';
+import { Search, Plus, Filter, Calendar, Edit2, Eye, Trash2, Car, Wrench, DollarSign } from 'lucide-react';
 import type { MaintenanceEvent, ServiceProvider, Vehicle } from '../../types';
 import MaintenanceDetailsModal from '../../components/maintenance/MaintenanceDetailsModal';
 import DeleteConfirmationModal from '../../components/shared/DeleteConfirmationModal';
@@ -89,6 +89,8 @@ export default function MaintenanceList() {
         institutionId: vehicle.institution_id,
         imageUrl: vehicle.image_url || undefined,
         mileage: vehicle.mileage,
+        odometerReading: vehicle.odometer_reading,
+        purchaseDate: vehicle.purchase_date,
         fuelType: vehicle.fuel_type,
         createdAt: vehicle.created_at,
       })));
@@ -116,8 +118,12 @@ export default function MaintenanceList() {
           created_by,
           created_at,
           updated_at,
-          service_providers (
+          service_providers:service_provider_id (
             name
+          ),
+          vehicles:vehicle_id (
+            make,
+            model
           )
         `);
 
@@ -135,21 +141,30 @@ export default function MaintenanceList() {
 
       if (error) throw error;
 
-      const mappedEvents: MaintenanceEvent[] = data.map(event => ({
-        id: event.id,
-        vehicleId: event.vehicle_id,
-        title: event.title,
-        description: event.description,
-        type: event.type,
-        status: event.status,
-        startDate: event.start_date,
-        endDate: event.end_date,
-        cost: event.cost || undefined,
-        serviceProvider: event.service_providers?.name,
-        createdBy: event.created_by,
-        createdAt: event.created_at,
-        updatedAt: event.updated_at,
-      }));
+      const mappedEvents: MaintenanceEvent[] = data.map(event => {
+        const providerArr = event.service_providers as { name: string }[] | undefined;
+        const vehicleArr = event.vehicles as { make: string; model: string }[] | undefined;
+        return {
+          id: event.id,
+          vehicleId: event.vehicle_id,
+          title: event.title,
+          description: event.description,
+          type: event.type,
+          status: event.status,
+          startDate: event.start_date,
+          endDate: event.end_date,
+          cost: event.cost || undefined,
+          serviceProvider: Array.isArray(providerArr)
+            ? providerArr[0]?.name
+            : (providerArr as any)?.name,
+          createdBy: event.created_by,
+          createdAt: event.created_at || '',
+          updatedAt: event.updated_at || '',
+          vehicle: Array.isArray(vehicleArr)
+            ? (vehicleArr[0] ? `${vehicleArr[0].make} ${vehicleArr[0].model}` : 'No vehicle assigned')
+            : (vehicleArr ? `${(vehicleArr as any).make} ${(vehicleArr as any).model}` : 'No vehicle assigned'),
+        };
+      });
 
       setMaintenanceEvents(mappedEvents);
     } catch (error) {
@@ -355,10 +370,12 @@ export default function MaintenanceList() {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          {/* Vista de escritorio solo en xl+ */}
+          <table className="w-full hidden xl:table">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-700">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Title</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vehicle</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Start Date</th>
@@ -377,6 +394,9 @@ export default function MaintenanceList() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500 dark:text-gray-300">{event.vehicle}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${typeColors[event.type]}`}>
                       {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
                     </span>
@@ -393,7 +413,12 @@ export default function MaintenanceList() {
                     {format(new Date(event.endDate), 'PPp')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {event.serviceProvider || 'Not assigned'}
+                    <div className="flex items-center space-x-2">
+                      <Wrench className="h-4 w-4 text-gray-400" />
+                      <span className="text-gray-500 dark:text-gray-300">
+                        {event.serviceProvider || 'Not assigned'}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     ${event.cost?.toFixed(2) || '0.00'}
@@ -433,6 +458,78 @@ export default function MaintenanceList() {
               ))}
             </tbody>
           </table>
+
+          {/* Vista tipo tarjeta para mobile, md y lg */}
+          <div className="xl:hidden">
+            {filteredEvents.map((event) => (
+              <div key={event.id} className="p-6 mb-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="text-base font-semibold text-gray-900 dark:text-white">{event.title}</div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        setSelectedMaintenance(event);
+                        setIsModalOpen(true);
+                      }}
+                      className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
+                      title="Ver detalles"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedMaintenance(event);
+                        setIsModalOpen(true);
+                      }}
+                      className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
+                      title="Editar"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingMaintenance(event)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <Car className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">{event.vehicle}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeColors[event.type]}`}>
+                      {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
+                    </span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[event.status]}`}>
+                      {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600 dark:text-gray-300">
+                      {format(new Date(event.startDate), 'PPp')}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Wrench className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600 dark:text-gray-300">
+                      {event.serviceProvider || 'Not assigned'}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600 dark:text-gray-300">
+                      ${event.cost?.toFixed(2) || '0.00'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
           {filteredEvents.length === 0 && (
             <div className="text-center py-12">

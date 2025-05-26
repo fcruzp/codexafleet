@@ -57,7 +57,7 @@ const ChatGeminiAI: React.FC = () => {
       {/* Botón flotante */}
       {!open && (
         <button
-          className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg focus:outline-none"
+          className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg focus:outline-none transition-colors duration-200"
           onClick={() => setOpen(true)}
           aria-label="Abrir chat AI"
         >
@@ -66,26 +66,38 @@ const ChatGeminiAI: React.FC = () => {
       )}
       {/* Ventana flotante de chat */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 w-80 max-w-full bg-white dark:bg-gray-800 rounded-lg shadow-2xl flex flex-col h-[500px] border border-gray-200 dark:border-gray-700 animate-fade-in">
+        <div className="fixed bottom-6 right-6 z-50 w-80 max-w-full bg-white dark:bg-gray-800 rounded-lg shadow-2xl flex flex-col h-[500px] border border-gray-200 dark:border-gray-700 animate-fade-in transition-colors duration-200">
           <div className="flex items-center justify-between p-3 border-b dark:border-gray-700 bg-blue-600 rounded-t-lg">
             <span className="text-white font-semibold">Asistente AI</span>
-            <button onClick={() => setOpen(false)} className="text-white hover:text-gray-200">
+            <button 
+              onClick={() => setOpen(false)} 
+              className="text-white hover:text-gray-200 transition-colors duration-200"
+              aria-label="Cerrar chat"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto mb-2 p-2 bg-gray-50 dark:bg-gray-900">
+          <div className="flex-1 overflow-y-auto mb-2 p-2 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
             {messages.map((msg, idx) => (
               <div key={idx} className={`mb-2 text-sm ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
-                <span className={`inline-block px-2 py-1 rounded ${msg.sender === 'user' ? 'bg-blue-200 dark:bg-blue-700' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                <span className={`inline-block px-2 py-1 rounded transition-colors duration-200 ${
+                  msg.sender === 'user' 
+                    ? 'bg-blue-200 dark:bg-blue-700 text-gray-800 dark:text-white' 
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
+                }`}>
                   {msg.text}
                 </span>
               </div>
             ))}
-            {loading && <div className="text-xs text-gray-400">Modelo AI está escribiendo...</div>}
+            {loading && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
+                Modelo AI está escribiendo...
+              </div>
+            )}
           </div>
-          <div className="flex space-x-2 p-2 border-t dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg">
+          <div className="flex space-x-2 p-2 border-t dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg transition-colors duration-200">
             <input
-              className="flex-1 border rounded p-2 dark:bg-gray-700 dark:text-white"
+              className="flex-1 border rounded p-2 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200"
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -94,7 +106,7 @@ const ChatGeminiAI: React.FC = () => {
               disabled={loading}
             />
             <button
-              className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50 transition-colors duration-200"
               onClick={sendMessage}
               disabled={loading || !input.trim()}
             >

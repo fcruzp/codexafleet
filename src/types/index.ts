@@ -84,6 +84,14 @@ export interface MaintenanceEvent {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  vehicle?: string;
+  service_providers?: {
+    name: string;
+  };
+  vehicles?: {
+    make: string;
+    model: string;
+  };
 }
 
 export interface ServiceProvider {

@@ -3,7 +3,7 @@ import { X, Calendar, Car, PenTool as Tool, DollarSign, Save, Edit2, Check, Chev
 import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import type { MaintenanceEvent, ServiceProvider } from '../../types';
+import type { MaintenanceEvent, ServiceProvider, Vehicle } from '../../types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -17,14 +17,49 @@ export default function MaintenanceDetailsModal({ maintenance, isOpen, onClose }
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<MaintenanceEvent>();
 
   useEffect(() => {
     if (isOpen && maintenance) {
       reset(maintenance);
       fetchServiceProviders();
+      fetchVehicles();
     }
   }, [isOpen, maintenance, reset]);
+
+  const fetchVehicles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .order('make');
+
+      if (error) throw error;
+
+      setVehicles(data.map(vehicle => ({
+        id: vehicle.id,
+        make: vehicle.make,
+        model: vehicle.model,
+        year: vehicle.year,
+        licensePlate: vehicle.license_plate,
+        vin: vehicle.vin,
+        color: vehicle.color,
+        status: vehicle.status,
+        assignedDriverId: vehicle.assigned_driver_id || undefined,
+        institutionId: vehicle.institution_id,
+        imageUrl: vehicle.image_url || undefined,
+        mileage: vehicle.mileage,
+        odometerReading: vehicle.odometer_reading,
+        purchaseDate: vehicle.purchase_date,
+        fuelType: vehicle.fuel_type,
+        createdAt: vehicle.created_at,
+      })));
+    } catch (err) {
+      console.error('Error fetching vehicles:', err);
+      toast.error('Failed to load vehicles');
+    }
+  };
 
   const fetchServiceProviders = async () => {
     try {
@@ -62,6 +97,7 @@ export default function MaintenanceDetailsModal({ maintenance, isOpen, onClose }
   if (!maintenance) return null;
 
   const selectedProvider = serviceProviders.find(p => p.name === watch('serviceProvider'));
+  const selectedVehicle = vehicles.find(v => v.id === watch('vehicleId'));
 
   const statusColors = {
     pending: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100',
@@ -88,6 +124,7 @@ export default function MaintenanceDetailsModal({ maintenance, isOpen, onClose }
           end_date: data.endDate,
           cost: data.cost || null,
           service_provider_id: serviceProvider?.id || null,
+          vehicle_id: data.vehicleId,
           updated_at: new Date().toISOString(),
         })
         .eq('id', maintenance.id);
@@ -184,6 +221,60 @@ export default function MaintenanceDetailsModal({ maintenance, isOpen, onClose }
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
+                    <Car className="h-5 w-5" />
+                    <div>
+                      <div className="text-sm font-medium">Vehicle</div>
+                      {isEditing ? (
+                        <Listbox
+                          value={selectedVehicle?.id || ''}
+                          onChange={(value) => setValue('vehicleId', value)}
+                        >
+                          <div className="relative mt-1">
+                            <Listbox.Button className="relative w-full cursor-default rounded-lg bg-white dark:bg-gray-700 py-2 pl-3 pr-10 text-left border border-gray-300 dark:border-gray-600 focus:outline-none focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-300">
+                              <span className="block truncate">
+                                {selectedVehicle ? `${selectedVehicle.make} ${selectedVehicle.model}` : 'Select a vehicle'}
+                              </span>
+                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                <ChevronUpDown className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                              </span>
+                            </Listbox.Button>
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-700 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                              {vehicles.map((vehicle) => (
+                                <Listbox.Option
+                                  key={vehicle.id}
+                                  value={vehicle.id}
+                                  className={({ active }) =>
+                                    `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                                      active
+                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-900 dark:text-primary-100'
+                                        : 'text-gray-900 dark:text-white'
+                                    }`
+                                  }
+                                >
+                                  {({ selected }) => (
+                                    <>
+                                      <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                                        {`${vehicle.make} ${vehicle.model}`}
+                                      </span>
+                                      {selected ? (
+                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600 dark:text-primary-400">
+                                          <Check className="h-5 w-5" aria-hidden="true" />
+                                        </span>
+                                      ) : null}
+                                    </>
+                                  )}
+                                </Listbox.Option>
+                              ))}
+                            </Listbox.Options>
+                          </div>
+                        </Listbox>
+                      ) : (
+                        <div>{maintenance.vehicle || 'No vehicle assigned'}</div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
                     <Calendar className="h-5 w-5" />
                     <div>
@@ -321,7 +412,11 @@ export default function MaintenanceDetailsModal({ maintenance, isOpen, onClose }
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsEditing(true)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsEditing(true);
+                    }}
                     className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center"
                   >
                     <Edit2 className="h-5 w-5 mr-2" />
