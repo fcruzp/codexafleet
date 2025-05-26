@@ -6,6 +6,7 @@ import { Building2, Calendar, Car, LayoutDashboard, LogOut, Menu, Moon, Settings
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { translations } from '../translations';
+import ChatGeminiAI from '../components/shared/ChatGeminiAI';
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
@@ -186,6 +187,7 @@ export default function AppLayout() {
           </main>
         </div>
       </div>
+      <ChatGeminiAI />
     </div>
   );
 }

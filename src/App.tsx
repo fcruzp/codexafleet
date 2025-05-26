@@ -6,6 +6,7 @@ import AuthLayout from './layouts/AuthLayout';
 import LoadingPage from './pages/shared/LoadingPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Dashboard from './pages/dashboard/Dashboard';
+import ChatGeminiAI from './components/shared/ChatGeminiAI';
 
 // Lazy-loaded components
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
@@ -61,6 +62,8 @@ function App() {
 
             {/* Settings route */}
             <Route path="/settings" element={<SettingsPage />} />
+            {/* Gemini AI Chat route */}
+            <Route path="/chat-gemini" element={<ChatGeminiAI />} />
           </Route>
         </Route>
 
