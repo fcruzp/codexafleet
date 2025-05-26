@@ -145,7 +145,7 @@ export default function AppLayout() {
                     className="flex items-center space-x-2 p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <span className="text-sm hidden sm:block">
-                      {user.firstName} {user.lastName}
+                      {user.firstName} {user.lastName} ({user.role.charAt(0).toUpperCase() + user.role.slice(1)})
                     </span>
                     <div className="h-8 w-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
                       <span className="text-primary-700 dark:text-primary-300 font-medium">
