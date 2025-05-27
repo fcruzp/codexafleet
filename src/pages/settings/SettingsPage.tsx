@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Settings, Moon, Sun, Bell, Shield, User, Globe } from 'lucide-react';
+import { ArrowLeft, Settings, Moon, Sun, Bell, Shield, User, Globe, Image } from 'lucide-react';
 import { useThemeStore } from '../../stores/theme-store';
 import { useLanguageStore } from '../../stores/language-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { translations } from '../../translations';
 import ImageUploadModal from '../../components/vehicles/ImageUploadModal';
+import LogoUploadModal from '../../components/settings/LogoUploadModal';
+import { supabase } from '../../lib/supabase';
 
 export default function SettingsPage() {
   const { isDark, toggleTheme } = useThemeStore();
@@ -13,6 +15,39 @@ export default function SettingsPage() {
   const { user } = useAuthStore();
   const t = translations[language].settings;
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showLogoModal, setShowLogoModal] = useState(false);
+  const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCurrentLogo();
+  }, []);
+
+  const fetchCurrentLogo = async () => {
+    try {
+      // Obtener el logo más reciente de la carpeta logos
+      const { data, error } = await supabase.storage
+        .from('user-images')
+        .list('logos', {
+          limit: 1,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('user-images')
+          .getPublicUrl(`logos/${data[0].name}`);
+        setCurrentLogoUrl(publicUrl);
+      }
+    } catch (err) {
+      console.error('Error fetching current logo:', err);
+    }
+  };
+
+  const handleLogoUploadComplete = (url: string) => {
+    setCurrentLogoUrl(url);
+  };
 
   return (
     <div className="p-6">
@@ -151,6 +186,28 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Branding Section */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t.branding.title}</h2>
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-4">
+                <div className="flex items-center">
+                  <Image className="h-5 w-5 text-gray-600 dark:text-gray-300 mr-3" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{t.branding.logo}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {t.branding.logoDesc}
+                    </p>
+                    <button
+                      className="mt-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
+                      onClick={() => setShowLogoModal(true)}
+                    >
+                      {t.branding.uploadLogo}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -158,8 +215,15 @@ export default function SettingsPage() {
       <ImageUploadModal
         isOpen={showImageModal}
         onClose={() => setShowImageModal(false)}
-        bucket="user-images" // Change to your bucket name
-        folder="vehicles" // Optional: organize by user
+        bucket="user-images"
+        folder="vehicles"
+      />
+
+      <LogoUploadModal
+        isOpen={showLogoModal}
+        onClose={() => setShowLogoModal(false)}
+        onUploadComplete={handleLogoUploadComplete}
+        currentLogoUrl={currentLogoUrl}
       />
     </div>
   );

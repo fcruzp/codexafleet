@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { translations } from '../translations';
 import ChatGeminiAI from '../components/shared/ChatGeminiAI';
+import Header from '../components/layout/Header';
+import { supabase } from '../lib/supabase';
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
@@ -16,6 +18,7 @@ export default function AppLayout() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
   const t = translations[language];
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
@@ -45,6 +48,26 @@ export default function AppLayout() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSidebarOpen]);
+
+  useEffect(() => {
+    async function fetchLogo() {
+      // Buscar el primer archivo que haya en el folder logos
+      const { data, error } = await supabase.storage
+        .from('user-images')
+        .list('logos');
+      if (error || !data || data.length === 0) {
+        setLogoUrl(null);
+        return;
+      }
+      // Usar el primer archivo encontrado
+      const logoFile = data[0];
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-images')
+        .getPublicUrl(`logos/${logoFile.name}`);
+      setLogoUrl(publicUrl);
+    }
+    fetchLogo();
+  }, [location]);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -86,7 +109,16 @@ export default function AppLayout() {
           <div className="h-full flex flex-col">
             <div className="flex items-center justify-between h-16 px-4 border-b dark:border-gray-700">
               <Link to="/dashboard" className="flex items-center space-x-2">
-                <Building2 className="h-8 w-8 text-primary-600" />
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Logo"
+                    className="h-8 w-8 object-contain rounded bg-white shadow"
+                    style={{ minWidth: 32, minHeight: 32 }}
+                  />
+                ) : (
+                  <Building2 className="h-8 w-8 text-primary-600" />
+                )}
                 <span className="text-xl font-semibold text-gray-900 dark:text-white">{t.layout.appName}</span>
               </Link>
               <button
@@ -121,67 +153,7 @@ export default function AppLayout() {
 
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
-            <div className="flex items-center justify-between h-16 px-4">
-              <button
-                id="menu-button"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="lg:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-
-              <div className="flex items-center space-x-4 ml-auto">
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </button>
-
-                {/* User Menu */}
-                <div className="relative">
-                  <button
-                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center space-x-2 p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <span className="text-sm hidden sm:block">
-                      {user.firstName} {user.lastName} ({user.role.charAt(0).toUpperCase() + user.role.slice(1)})
-                    </span>
-                    <div className="h-8 w-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
-                      <span className="text-primary-700 dark:text-primary-300 font-medium">
-                        {user.firstName[0]}{user.lastName[0]}
-                      </span>
-                    </div>
-                  </button>
-
-                  {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50">
-                      <Link
-                        to="/settings"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        {t.layout.userMenu.settings}
-                      </Link>
-                      <button
-                        onClick={() => {
-                          logout();
-                          setIsUserMenuOpen(false);
-                        }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        {t.layout.userMenu.logout}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </header>
-
+          <Header logoUrl={logoUrl} />
           <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900">
             <Outlet />
           </main>

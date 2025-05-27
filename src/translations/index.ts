@@ -14,7 +14,7 @@ export const translations = {
       notifications: {
         title: 'Notifications',
         emailNotifications: 'Email Notifications',
-        emailNotificationsDesc: 'Receive email updates about maintenance events'
+        emailNotificationsDesc: 'Receive email notifications for important updates'
       },
       security: {
         title: 'Security',
@@ -25,8 +25,14 @@ export const translations = {
       account: {
         title: 'Account',
         profileInfo: 'Profile Information',
-        profileInfoDesc: 'Update your account details and preferences',
+        profileInfoDesc: 'Update your profile information and avatar',
         editProfile: 'Edit Profile'
+      },
+      branding: {
+        title: 'Branding',
+        logo: 'Institution Logo',
+        logoDesc: 'Upload your institution logo to customize the application',
+        uploadLogo: 'Upload Logo'
       }
     },
     layout: {
@@ -160,16 +166,16 @@ export const translations = {
       appearance: {
         title: 'Apariencia',
         darkMode: 'Modo Oscuro',
-        darkModeDesc: 'Alternar entre temas claro y oscuro',
+        darkModeDesc: 'Cambiar entre tema claro y oscuro',
         language: 'Idioma',
-        languageDesc: 'Elige tu idioma preferido',
+        languageDesc: 'Selecciona tu idioma preferido',
         english: 'Inglés',
         spanish: 'Español'
       },
       notifications: {
         title: 'Notificaciones',
-        emailNotifications: 'Notificaciones por Correo',
-        emailNotificationsDesc: 'Recibir actualizaciones por correo sobre eventos de mantenimiento'
+        emailNotifications: 'Notificaciones por Email',
+        emailNotificationsDesc: 'Recibe notificaciones por email para actualizaciones importantes'
       },
       security: {
         title: 'Seguridad',
@@ -178,10 +184,16 @@ export const translations = {
         enable2FA: 'Activar 2FA'
       },
       account: {
-        title: 'Vehiculos Flota',
-        profileInfo: 'Gestiona Fotos de Vehiculos',
-        profileInfoDesc: 'Actualiza fotos de vehiculos a la flota para ser usados en la lista de vehiculos',
-        editProfile: 'Selecciona Fotos'
+        title: 'Cuenta',
+        profileInfo: 'Información del Perfil',
+        profileInfoDesc: 'Actualiza tu información de perfil y avatar',
+        editProfile: 'Editar Perfil'
+      },
+      branding: {
+        title: 'Marca',
+        logo: 'Logo de la Institución',
+        logoDesc: 'Sube el logo de tu institución para personalizar la aplicación',
+        uploadLogo: 'Subir Logo'
       }
     },
     layout: {

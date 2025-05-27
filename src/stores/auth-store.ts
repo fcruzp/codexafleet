@@ -10,6 +10,7 @@ interface AuthState {
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
+  signOut: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -136,4 +137,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user: User) => {
     set({ user, isAuthenticated: true });
   },
+
+  signOut: async () => {
+    await supabase.auth.signOut();
+    set({ user: null });
+  }
 }));
