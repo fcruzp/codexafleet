@@ -7,7 +7,7 @@ import { useAuthStore } from '../../stores/auth-store';
 import { translations } from '../../translations';
 import ImageUploadModal from '../../components/vehicles/ImageUploadModal';
 
-export default function SettingsPage() { add
+export default function SettingsPage() {
   const { isDark, toggleTheme } = useThemeStore();
   const { language, setLanguage } = useLanguageStore();
   const { user } = useAuthStore();

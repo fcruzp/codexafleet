@@ -8,6 +8,8 @@ import { useLanguageStore } from '../../stores/language-store';
 import { translations } from '../../translations';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { logActivity } from '../../lib/logActivity';
+import ImageUploadModal from '../../components/vehicles/ImageUploadModal';
 
 type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'status'>;
 
@@ -18,6 +20,8 @@ export default function AddVehicle() {
   const t = translations[language].vehicles.add;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<VehicleFormData>();
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   // Redirect if not authenticated
   if (!user) {
@@ -28,6 +32,12 @@ export default function AddVehicle() {
     try {
       setIsSubmitting(true);
 
+      if (!selectedImageUrl) {
+        toast.error('Debes seleccionar una imagen para el vehículo');
+        setIsSubmitting(false);
+        return;
+      }
+
       // Prepare vehicle data
       const vehicleData = {
         make: data.make,
@@ -37,19 +47,21 @@ export default function AddVehicle() {
         vin: data.vin,
         color: data.color,
         status: 'active',
-        institution_id: '1', // Default institution ID
-        image_url: data.imageUrl || null,
+        image_url: selectedImageUrl,
         mileage: data.mileage,
         odometer_reading: data.mileage, // Initially same as mileage
         purchase_date: new Date().toISOString().split('T')[0],
         fuel_type: data.fuelType,
         notes: data.notes || null,
+        insurance_policy: data.insurancePolicy || null,
+        insurance_expiry: data.insuranceExpiry || null,
       };
 
       // Insert vehicle into database
-      const { error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from('vehicles')
-        .insert([vehicleData]);
+        .insert([vehicleData])
+        .select();
 
       if (insertError) {
         // Handle specific database errors
@@ -64,9 +76,18 @@ export default function AddVehicle() {
         throw insertError;
       }
 
+      // Registrar log
+      await logActivity({
+        userId: user.id,
+        action: 'create',
+        entity: 'vehicle',
+        entityId: inserted?.[0]?.id,
+        description: `Creó el vehículo: ${data.make} ${data.model}`,
+      });
+
       toast.success('Vehicle added successfully');
       navigate('/vehicles');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create vehicle:', error);
       toast.error(error.message || 'Failed to create vehicle');
     } finally {
@@ -253,15 +274,63 @@ export default function AddVehicle() {
                 />
               </div>
 
+              {/* Insurance Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t.additionalInfo.insurancePolicy}
+                  </label>
+                  <input
+                    type="text"
+                    {...register('insurancePolicy')}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t.additionalInfo.insuranceExpiry}
+                  </label>
+                  <input
+                    type="date"
+                    {...register('insuranceExpiry')}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t.additionalInfo.imageUrl}
+                  Imagen del vehículo <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="url"
-                  {...register('imageUrl')}
-                  placeholder="https://example.com/vehicle-image.jpg"
-                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                <button
+                  type="button"
+                  onClick={() => setIsImageModalOpen(true)}
+                  className="w-1/5 min-w-[120px] max-w-[160px] h-20 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex items-center justify-center"
+                >
+                  {selectedImageUrl ? (
+                    <img
+                      src={selectedImageUrl}
+                      alt="Previsualización"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 py-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a4 4 0 004 4h10a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11l4 4 4-4" /></svg>
+                      <span className="text-xs">Haz clic para seleccionar una imagen</span>
+                    </div>
+                  )}
+                </button>
+                <ImageUploadModal
+                  isOpen={isImageModalOpen}
+                  onClose={() => setIsImageModalOpen(false)}
+                  bucket="user-images"
+                  folder="vehicles/"
+                  onImageSelect={(url) => {
+                    setSelectedImageUrl(url);
+                    setIsImageModalOpen(false);
+                  }}
+                  selectedUrl={selectedImageUrl}
                 />
               </div>
             </div>

@@ -1,65 +1,70 @@
 import { History, Calendar, PenTool as Tool, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import type { MaintenanceEvent, VehicleStatus } from '../../types';
+import type { VehicleStatus } from '../../types';
+import type { Database } from '../../types/supabase';
+import { supabase } from '../../lib/supabase';
+import { useState, useEffect } from 'react';
 
 interface MaintenanceTimelineProps {
   vehicleId: string;
 }
 
+type MaintenanceEventFromDB = Omit<Database['public']['Tables']['maintenance_events']['Row'], 'service_provider_id'> & {
+  service_provider: { name: string | null } | null;
+};
+
 export default function MaintenanceTimeline({ vehicleId }: MaintenanceTimelineProps) {
-  // Mock data - replace with actual data fetching
-  const maintenanceHistory: (MaintenanceEvent | { 
-    id: string;
-    type: 'status_change';
-    date: string;
-    oldStatus: VehicleStatus;
-    newStatus: VehicleStatus;
-  })[] = [
-    {
-      id: '1',
-      vehicleId: '1',
-      title: 'Regular Oil Change',
-      description: 'Routine oil change and filter replacement',
-      type: 'scheduled',
-      status: 'completed',
-      startDate: '2025-05-01T10:00:00Z',
-      endDate: '2025-05-01T11:00:00Z',
-      cost: 89.99,
-      serviceProvider: 'Quick Service Center',
-      createdBy: '1',
-      createdAt: '2025-05-01T09:00:00Z',
-      updatedAt: '2025-05-01T11:00:00Z',
-    },
-    {
-      id: '2',
-      type: 'status_change',
-      date: '2025-05-02T14:00:00Z',
-      oldStatus: 'active',
-      newStatus: 'pendingMaintenance',
-    },
-    {
-      id: '3',
-      vehicleId: '1',
-      title: 'Emergency Brake Repair',
-      description: 'Emergency brake system repair required',
-      type: 'emergency',
-      status: 'completed',
-      startDate: '2025-05-03T09:00:00Z',
-      endDate: '2025-05-03T14:00:00Z',
-      cost: 299.99,
-      serviceProvider: 'Premium Auto Care',
-      createdBy: '1',
-      createdAt: '2025-05-03T08:00:00Z',
-      updatedAt: '2025-05-03T14:00:00Z',
-    },
-    {
-      id: '4',
-      type: 'status_change',
-      date: '2025-05-03T14:30:00Z',
-      oldStatus: 'maintenance',
-      newStatus: 'active',
-    },
-  ];
+  const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceEventFromDB[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchMaintenanceHistory();
+  }, [vehicleId]);
+
+  const fetchMaintenanceHistory = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('maintenance_events')
+        .select(`
+          id,
+          vehicle_id,
+          title,
+          description,
+          type,
+          status,
+          start_date,
+          end_date,
+          cost,
+          service_provider:service_providers(name),
+          created_by,
+          created_at,
+          updated_at
+        `)
+        .eq('vehicle_id', vehicleId)
+        .order('start_date', { ascending: false });
+
+      if (fetchError) throw fetchError;
+
+      const processedEvents = (data?.filter(event => event.type !== 'status_change') || []).map(event => {
+        const serviceProvider = event.service_provider && typeof event.service_provider === 'object' && !Array.isArray(event.service_provider)
+          ? event.service_provider as { name: string | null }
+          : null;
+        return {
+          ...event,
+          service_provider: serviceProvider
+        };
+      }) as MaintenanceEventFromDB[];
+      setMaintenanceHistory(processedEvents);
+    } catch (err) {
+      console.error('Error fetching maintenance history:', err);
+      setError('Failed to load maintenance history.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getStatusIcon = (status: VehicleStatus) => {
     switch (status) {
@@ -76,7 +81,7 @@ export default function MaintenanceTimeline({ vehicleId }: MaintenanceTimelinePr
     }
   };
 
-  const getEventIcon = (type: MaintenanceEvent['type']) => {
+  const getEventIcon = (type: MaintenanceEventFromDB['type'] | 'status_change') => {
     switch (type) {
       case 'scheduled':
         return <Calendar className="h-5 w-5 text-blue-500" />;
@@ -84,12 +89,14 @@ export default function MaintenanceTimeline({ vehicleId }: MaintenanceTimelinePr
         return <AlertTriangle className="h-5 w-5 text-red-500" />;
       case 'repair':
         return <Tool className="h-5 w-5 text-yellow-500" />;
+      case 'status_change':
+        return <History className="h-5 w-5 text-gray-400" />;
       default:
         return null;
     }
   };
 
-  const getEventColor = (type: MaintenanceEvent['type']) => {
+  const getEventColor = (type: MaintenanceEventFromDB['type'] | 'status_change') => {
     switch (type) {
       case 'scheduled':
         return 'border-blue-200 dark:border-blue-800';
@@ -121,58 +128,44 @@ export default function MaintenanceTimeline({ vehicleId }: MaintenanceTimelinePr
             {maintenanceHistory.map((event) => (
               <div key={event.id} className="relative pl-10">
                 <div className="absolute left-0 top-1.5 w-8 h-8 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center">
-                  {event.type === 'status_change' ? (
-                    getStatusIcon(event.newStatus)
-                  ) : (
-                    getEventIcon(event.type)
-                  )}
+                  {getEventIcon(event.type)}
                 </div>
 
-                <div className={`p-4 rounded-lg border ${
-                  event.type === 'status_change' ? 'border-gray-200 dark:border-gray-700' : getEventColor(event.type)
-                }`}>
-                  {event.type === 'status_change' ? (
-                    <>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                          Status Changed
-                        </h3>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {format(new Date(event.date), 'PPp')}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        Status changed from{' '}
-                        <span className="font-medium">{event.oldStatus}</span> to{' '}
-                        <span className="font-medium">{event.newStatus}</span>
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                          {event.title}
-                        </h3>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {format(new Date(event.startDate), 'PPp')}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 dark:text-gray-300 mb-2">
-                        {event.description}
-                      </p>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Service Provider: {event.serviceProvider}
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          Cost: ${event.cost.toFixed(2)}
-                        </span>
-                      </div>
-                    </>
-                  )}
+                <div className={`p-4 rounded-lg border ${getEventColor(event.type)}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      {event.title}
+                    </h3>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {format(new Date(event.start_date), 'PPp')}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 mb-2">
+                    {event.description}
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">
+                      Service Provider: {event.service_provider?.name || 'N/A'}
+                    </span>
+                    {event.cost !== null && event.cost !== undefined && (
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        Cost: ${event.cost.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
+            {isLoading && (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            )}
+            {!isLoading && maintenanceHistory.length === 0 && (
+              <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+                No maintenance history found for this vehicle.
+              </div>
+            )}
           </div>
         </div>
       </div>

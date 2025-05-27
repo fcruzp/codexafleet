@@ -136,7 +136,9 @@ export const translations = {
         additionalInfo: {
           title: 'Additional Information',
           notes: 'Notes',
-          imageUrl: 'Image URL'
+          imageUrl: 'Image URL',
+          insurancePolicy: 'Insurance Policy',
+          insuranceExpiry: 'Insurance Expiry Date'
         },
         buttons: {
           cancel: 'Cancel',
@@ -289,7 +291,9 @@ export const translations = {
         additionalInfo: {
           title: 'Información Adicional',
           notes: 'Notas',
-          imageUrl: 'URL de Imagen'
+          imageUrl: 'URL de la Imagen',
+          insurancePolicy: 'Póliza de Seguro',
+          insuranceExpiry: 'Fecha de Vencimiento del Seguro'
         },
         buttons: {
           cancel: 'Cancelar',

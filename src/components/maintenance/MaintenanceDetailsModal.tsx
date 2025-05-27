@@ -6,6 +6,8 @@ import { useForm } from 'react-hook-form';
 import type { MaintenanceEvent, ServiceProvider, Vehicle } from '../../types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { logActivity } from '../../lib/logActivity';
+import { useAuthStore } from '../../stores/auth-store';
 
 interface MaintenanceDetailsModalProps {
   maintenance: MaintenanceEvent | null;
@@ -19,6 +21,7 @@ export default function MaintenanceDetailsModal({ maintenance, isOpen, onClose }
   const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<MaintenanceEvent>();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     if (isOpen && maintenance) {
@@ -130,6 +133,15 @@ export default function MaintenanceDetailsModal({ maintenance, isOpen, onClose }
         .eq('id', maintenance.id);
 
       if (updateError) throw updateError;
+
+      // Registrar log
+      await logActivity({
+        userId: user.id,
+        action: 'update',
+        entity: 'maintenance',
+        entityId: maintenance.id,
+        description: `Editó el mantenimiento: ${data.title}`,
+      });
 
       toast.success('Maintenance event updated successfully');
       setIsEditing(false);

@@ -7,6 +7,7 @@ import { useAuthStore } from '../../stores/auth-store';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { logActivity } from '../../lib/logActivity';
 
 type UserFormData = Omit<User, 'id' | 'createdAt'>;
 
@@ -111,11 +112,9 @@ export default function AddUser() {
       if (uploadError) throw uploadError;
 
       // Get the public URL
-      const { data: { publicUrl }, error: urlError } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('user-images')
         .getPublicUrl(filePath);
-
-      if (urlError) throw urlError;
 
       // Update form with the image URL
       setValue('licenseImageUrl', publicUrl);
@@ -173,6 +172,16 @@ export default function AddUser() {
 
       const responseData = await response.json();
       console.log('User created successfully:', responseData);
+      // Registrar log de creación de usuario
+      if (user) {
+        await logActivity({
+          userId: user.id,
+          action: 'create',
+          entity: 'user',
+          entityId: responseData.id || data.email,
+          description: `Creó el usuario: ${data.firstName} ${data.lastName}`,
+        });
+      }
       toast.success('Driver created successfully');
       navigate('/users');
     } catch (error: any) {

@@ -6,6 +6,8 @@ import { translations } from '../../translations';
 import type { Vehicle, VehicleStatus, Driver } from '../../types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { logActivity } from '../../lib/logActivity';
+import { useAuthStore } from '../../stores/auth-store';
 
 export default function VehicleList() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,6 +17,7 @@ export default function VehicleList() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [drivers, setDrivers] = useState<Record<string, Driver>>({});
+  const { user } = useAuthStore();
 
   useEffect(() => {
     fetchVehicles();
@@ -46,11 +49,12 @@ export default function VehicleList() {
           color,
           status,
           assigned_driver_id,
-          institution_id,
           image_url,
           mileage,
           fuel_type,
-          created_at
+          created_at,
+          odometer_reading,
+          purchase_date
         `)
         .order('created_at', { ascending: false });
 
@@ -66,11 +70,12 @@ export default function VehicleList() {
         color: vehicle.color,
         status: vehicle.status,
         assignedDriverId: vehicle.assigned_driver_id || undefined,
-        institutionId: vehicle.institution_id,
         imageUrl: vehicle.image_url || undefined,
         mileage: vehicle.mileage,
         fuelType: vehicle.fuel_type,
         createdAt: vehicle.created_at,
+        odometerReading: vehicle.odometer_reading,
+        purchaseDate: vehicle.purchase_date,
       }));
 
       setVehicles(mappedVehicles);
@@ -84,6 +89,12 @@ export default function VehicleList() {
 
   const fetchDrivers = async (driverIds: string[]) => {
     try {
+      const validDriverIds = driverIds.filter(id => !!id);
+      if (validDriverIds.length === 0) {
+        setDrivers({});
+        return;
+      }
+      console.log('Consultando drivers con IDs:', validDriverIds);
       const { data, error } = await supabase
         .from('users')
         .select(`
@@ -95,10 +106,18 @@ export default function VehicleList() {
           position,
           created_at
         `)
-        .eq('role', 'driver')
-        .in('id', driverIds);
+        .in('id', validDriverIds);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        toast.error('Error al consultar conductores: ' + error.message);
+        return;
+      }
+      if (!Array.isArray(data)) {
+        console.error('Respuesta inesperada de Supabase:', data);
+        toast.error('No se pudieron cargar los conductores asignados.');
+        return;
+      }
 
       const driversMap: Record<string, Driver> = {};
       data.forEach(driver => {
@@ -110,13 +129,17 @@ export default function VehicleList() {
           role: driver.role,
           position: driver.position || undefined,
           createdAt: driver.created_at,
+          licenseNumber: '',
+          licenseExpiry: '',
+          vehicleHistory: [],
+          isAvailable: true,
         };
       });
 
       setDrivers(driversMap);
     } catch (error) {
-      console.error('Error fetching drivers:', error);
-      toast.error('Failed to load driver information');
+      console.error('Error inesperado al cargar conductores:', error);
+      toast.error('Error inesperado al cargar conductores. Revisa la consola.');
     }
   };
 
@@ -138,6 +161,32 @@ export default function VehicleList() {
     maintenance: 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100',
     pendingMaintenance: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100',
     outOfService: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100',
+  };
+
+  const handleDeleteVehicle = async (vehicle: Vehicle) => {
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', vehicle.id);
+
+      if (error) throw error;
+
+      if (!user) throw new Error('Usuario no autenticado');
+      await logActivity({
+        userId: user.id,
+        action: 'delete',
+        entity: 'vehicle',
+        entityId: vehicle.id,
+        description: `Eliminó el vehículo: ${vehicle.make} ${vehicle.model}`,
+      });
+
+      toast.success('Vehicle deleted successfully');
+      fetchVehicles();
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      toast.error('Failed to delete vehicle');
+    }
   };
 
   if (isLoading) {
@@ -242,7 +291,7 @@ export default function VehicleList() {
                             {assignedDriver.firstName} {assignedDriver.lastName}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {assignedDriver.position?.charAt(0).toUpperCase() + assignedDriver.position?.slice(1)}
+                            {assignedDriver.position ? assignedDriver.position.charAt(0).toUpperCase() + assignedDriver.position.slice(1) : ''}
                           </p>
                         </>
                       ) : (

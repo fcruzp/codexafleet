@@ -7,6 +7,8 @@ import DeleteConfirmationModal from '../../components/shared/DeleteConfirmationM
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import { logActivity } from '../../lib/logActivity';
+import { useAuthStore } from '../../stores/auth-store';
 
 export default function MaintenanceList() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,6 +25,7 @@ export default function MaintenanceList() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingMaintenance, setDeletingMaintenance] = useState<MaintenanceEvent | null>(null);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     Promise.all([
@@ -183,6 +186,15 @@ export default function MaintenanceList() {
         .eq('id', deletingMaintenance.id);
 
       if (error) throw error;
+
+      // Registrar log
+      await logActivity({
+        userId: user.id,
+        action: 'delete',
+        entity: 'maintenance',
+        entityId: deletingMaintenance.id,
+        description: `Eliminó el mantenimiento: ${deletingMaintenance.title}`,
+      });
 
       setMaintenanceEvents(events => 
         events.filter(event => event.id !== deletingMaintenance.id)

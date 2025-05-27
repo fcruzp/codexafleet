@@ -7,41 +7,28 @@ import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { logActivity } from '../../lib/logActivity';
 import { useAuthStore } from '../../stores/auth-store';
+import ImageUploadModal from './ImageUploadModal';
 
-interface VehicleEditModalProps {
-  vehicle: Vehicle;
+interface VehicleCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (vehicle: Vehicle) => void;
 }
 
-export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: VehicleEditModalProps) {
+export default function VehicleCreateModal({ isOpen, onClose, onSave }: VehicleCreateModalProps) {
   const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<Vehicle>({
-    defaultValues: vehicle,
-  });
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<Vehicle>();
   const { user } = useAuthStore();
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       fetchDrivers();
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (vehicle && isOpen) {
-      const formattedVehicle = {
-        ...vehicle,
-        insuranceExpiry: vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry).toISOString().split('T')[0] : '',
-        lastMaintenanceDate: vehicle.lastMaintenanceDate ? new Date(vehicle.lastMaintenanceDate).toISOString().split('T')[0] : '',
-        nextMaintenanceDate: vehicle.nextMaintenanceDate ? new Date(vehicle.nextMaintenanceDate).toISOString().split('T')[0] : '',
-        purchaseDate: vehicle.purchaseDate ? new Date(vehicle.purchaseDate).toISOString().split('T')[0] : '',
-      };
-      reset(formattedVehicle);
-    }
-  }, [vehicle, isOpen, reset]);
 
   const fetchDrivers = async () => {
     try {
@@ -69,8 +56,7 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
       const { data: assignedVehicles, error: vehiclesError } = await supabase
         .from('vehicles')
         .select('assigned_driver_id')
-        .not('assigned_driver_id', 'is', null)
-        .neq('id', vehicle.id); // Exclude current vehicle's assigned driver
+        .not('assigned_driver_id', 'is', null);
 
       if (vehiclesError) throw vehiclesError;
 
@@ -110,9 +96,15 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
     try {
       setIsSubmitting(true);
 
-      const { error: updateError } = await supabase
+      if (!selectedImageUrl) {
+        toast.error('Debes seleccionar una imagen para el vehículo');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data: newVehicle, error: insertError } = await supabase
         .from('vehicles')
-        .update({
+        .insert({
           make: data.make,
           model: data.model,
           year: data.year,
@@ -121,7 +113,7 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
           color: data.color,
           status: data.status,
           assigned_driver_id: data.assignedDriverId || null,
-          image_url: data.imageUrl || null,
+          image_url: selectedImageUrl,
           insurance_policy: data.insurancePolicy || null,
           insurance_expiry: data.insuranceExpiry || null,
           last_maintenance_date: data.lastMaintenanceDate || null,
@@ -130,28 +122,28 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
           odometer_reading: data.odometerReading,
           fuel_type: data.fuelType,
           notes: data.notes || null,
-          updated_at: new Date().toISOString(),
         })
-        .eq('id', vehicle.id);
+        .select()
+        .single();
 
-      if (updateError) throw updateError;
+      if (insertError) throw insertError;
 
       // Registrar log
       if (user) {
         await logActivity({
           userId: user.id,
-          action: 'update',
+          action: 'create',
           entity: 'vehicle',
-          entityId: vehicle.id,
-          description: `Editó el vehículo: ${data.make} ${data.model}`,
+          entityId: newVehicle.id,
+          description: `Creó el vehículo: ${data.make} ${data.model}`,
         });
       }
 
-      onSave(data);
-      toast.success('Vehicle updated successfully');
+      onSave(newVehicle);
+      toast.success('Vehicle created successfully');
     } catch (error) {
-      console.error('Failed to update vehicle:', error);
-      toast.error('Failed to update vehicle');
+      console.error('Failed to create vehicle:', error);
+      toast.error('Failed to create vehicle');
     } finally {
       setIsSubmitting(false);
     }
@@ -165,7 +157,7 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
         <Dialog.Panel className="mx-auto max-w-2xl w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl">
           <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
             <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">
-              Edit Vehicle
+              Create Vehicle
             </Dialog.Title>
             <button
               onClick={onClose}
@@ -426,31 +418,6 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
                   <option value="hybrid">Hybrid</option>
                 </select>
               </div>
-
-              {/* Insurance Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Insurance Policy
-                  </label>
-                  <input
-                    type="text"
-                    {...register('insurancePolicy')}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Insurance Expiry Date
-                  </label>
-                  <input
-                    type="date"
-                    {...register('insuranceExpiry')}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-              </div>
             </div>
 
             <div>
@@ -464,25 +431,61 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
               />
             </div>
 
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Imagen del vehículo <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsImageModalOpen(true)}
+                className="w-full aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex items-center justify-center"
+              >
+                {selectedImageUrl ? (
+                  <img
+                    src={selectedImageUrl}
+                    alt="Previsualización"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 py-8">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a4 4 0 004 4h10a4 4 0 004-4V7a4 4 0 00-4-4H7a4 4 0 00-4 4z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11l4 4 4-4" /></svg>
+                    <span className="text-sm">Haz clic para seleccionar una imagen</span>
+                  </div>
+                )}
+              </button>
+            </div>
+
             <div className="mt-6 flex justify-end space-x-4">
               <button
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 type="submit"
                 className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center"
+                disabled={isSubmitting}
               >
                 <Save className="h-5 w-5 mr-2" />
-                Save Changes
+                Crear vehículo
               </button>
             </div>
           </form>
+          <ImageUploadModal
+            isOpen={isImageModalOpen}
+            onClose={() => setIsImageModalOpen(false)}
+            bucket="user-images"
+            folder="vehicles/"
+            onImageSelect={(url) => {
+              setSelectedImageUrl(url);
+              setIsImageModalOpen(false);
+            }}
+            selectedUrl={selectedImageUrl}
+          />
         </Dialog.Panel>
       </div>
     </Dialog>
   );
-}
+} 

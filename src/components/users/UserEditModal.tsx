@@ -6,6 +6,8 @@ import { supabase } from '../../lib/supabase';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { logActivity } from '../../lib/logActivity';
+import { useAuthStore } from '../../stores/auth-store';
 
 interface UserEditModalProps {
   user: User;
@@ -20,6 +22,7 @@ export default function UserEditModal({ user, isOpen, onClose, onSave }: UserEdi
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<User>();
+  const { user: currentUser } = useAuthStore();
 
   useEffect(() => {
     fetchDepartments();
@@ -105,11 +108,9 @@ export default function UserEditModal({ user, isOpen, onClose, onSave }: UserEdi
       if (uploadError) throw uploadError;
 
       // Get the public URL
-      const { data: { publicUrl }, error: urlError } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('user-images')
         .getPublicUrl(filePath);
-
-      if (urlError) throw urlError;
 
       // Update form with the image URL
       setValue('licenseImageUrl', publicUrl);
@@ -144,6 +145,17 @@ export default function UserEditModal({ user, isOpen, onClose, onSave }: UserEdi
         .eq('id', user.id);
 
       if (updateError) throw updateError;
+
+      // Registrar log de edición de usuario
+      if (currentUser) {
+        await logActivity({
+          userId: currentUser.id,
+          action: 'update',
+          entity: 'user',
+          entityId: user.id,
+          description: `Editó el usuario: ${data.firstName} ${data.lastName}`,
+        });
+      }
 
       onSave(data);
       toast.success('User updated successfully');

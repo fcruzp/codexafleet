@@ -53,7 +53,6 @@ export interface Vehicle {
   color: string;
   status: VehicleStatus;
   assignedDriverId?: string;
-  institutionId: string;
   imageUrl?: string;
   insurancePolicy?: string;
   insuranceExpiry?: string;

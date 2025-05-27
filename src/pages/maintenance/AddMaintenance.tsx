@@ -7,6 +7,7 @@ import type { MaintenanceEvent, ServiceProvider, Vehicle } from '../../types';
 import { useAuthStore } from '../../stores/auth-store';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { logActivity } from '../../lib/logActivity';
 
 type MaintenanceFormData = Omit<MaintenanceEvent, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>;
 
@@ -103,7 +104,7 @@ export default function AddMaintenance() {
       // Find service provider ID from name
       const serviceProvider = serviceProviders.find(p => p.name === data.serviceProvider);
 
-      const { error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from('maintenance_events')
         .insert([{
           vehicle_id: data.vehicleId,
@@ -116,9 +117,19 @@ export default function AddMaintenance() {
           cost: data.cost || null,
           service_provider_id: serviceProvider?.id || null,
           created_by: user.id,
-        }]);
+        }])
+        .select();
 
       if (insertError) throw insertError;
+
+      // Registrar log
+      await logActivity({
+        userId: user.id,
+        action: 'create',
+        entity: 'maintenance',
+        entityId: inserted?.[0]?.id,
+        description: `Creó el mantenimiento: ${data.title}`,
+      });
 
       toast.success('Maintenance event created successfully');
       navigate('/maintenance');

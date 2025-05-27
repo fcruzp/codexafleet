@@ -38,6 +38,7 @@ export default function VehicleDetails() {
 
   const fetchVehicle = async () => {
     try {
+      console.log('Fetching vehicle with ID:', id);
       const { data, error: fetchError } = await supabase
         .from('vehicles')
         .select(`
@@ -50,7 +51,6 @@ export default function VehicleDetails() {
           color,
           status,
           assigned_driver_id,
-          institution_id,
           image_url,
           insurance_policy,
           insurance_expiry,
@@ -65,6 +65,12 @@ export default function VehicleDetails() {
         `)
         .eq('id', id)
         .single();
+
+      console.log('Vehicle fetch response:', { 
+        data, 
+        error: fetchError,
+        assignedDriverId: data?.assigned_driver_id 
+      });
 
       if (fetchError) throw fetchError;
 
@@ -83,7 +89,6 @@ export default function VehicleDetails() {
         color: data.color,
         status: data.status,
         assignedDriverId: data.assigned_driver_id || undefined,
-        institutionId: data.institution_id,
         imageUrl: data.image_url || undefined,
         insurancePolicy: data.insurance_policy || undefined,
         insuranceExpiry: data.insurance_expiry || undefined,
@@ -97,7 +102,11 @@ export default function VehicleDetails() {
         createdAt: data.created_at,
       });
     } catch (err) {
-      console.error('Error fetching vehicle:', err);
+      console.error('Error fetching vehicle details:', {
+        error: err,
+        vehicleId: id,
+        timestamp: new Date().toISOString()
+      });
       setError('Failed to load vehicle data');
       toast.error('Failed to load vehicle data');
     } finally {
@@ -107,6 +116,7 @@ export default function VehicleDetails() {
 
   const fetchDriver = async (driverId: string) => {
     try {
+      console.log('Fetching driver with ID:', driverId);
       const { data, error: fetchError } = await supabase
         .from('users')
         .select(`
@@ -121,27 +131,45 @@ export default function VehicleDetails() {
           created_at
         `)
         .eq('id', driverId)
-        .eq('role', 'driver')
         .single();
 
-      if (fetchError) throw fetchError;
+      console.log('Driver fetch response:', { data, error: fetchError });
 
-      if (data) {
-        setAssignedDriver({
-          id: data.id,
-          email: data.email,
-          firstName: data.first_name,
-          lastName: data.last_name,
-          role: data.role,
-          position: data.position || undefined,
-          imageUrl: data.image_url || undefined,
-          licenseImageUrl: data.license_image_url || undefined,
-          createdAt: data.created_at,
-        });
+      if (fetchError) {
+        console.error('Driver fetch error details:', fetchError);
+        throw fetchError;
       }
+
+      if (!data) {
+        console.log('No driver data found for ID:', driverId);
+        setAssignedDriver(null);
+        return;
+      }
+
+      console.log('Setting driver data:', data);
+      setAssignedDriver({
+        id: data.id,
+        email: data.email,
+        firstName: data.first_name,
+        lastName: data.last_name,
+        role: data.role,
+        position: data.position || undefined,
+        imageUrl: data.image_url || undefined,
+        licenseImageUrl: data.license_image_url || undefined,
+        createdAt: data.created_at,
+        licenseNumber: '',
+        licenseExpiry: '',
+        vehicleHistory: [],
+        isAvailable: true,
+      });
     } catch (err) {
-      console.error('Error fetching driver:', err);
+      console.error('Error fetching driver details:', {
+        error: err,
+        driverId,
+        timestamp: new Date().toISOString()
+      });
       toast.error('Failed to load driver information');
+      setAssignedDriver(null);
     }
   };
 
@@ -394,7 +422,7 @@ export default function VehicleDetails() {
                         {assignedDriver.firstName} {assignedDriver.lastName}
                       </h3>
                       <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                        <p>Position: {assignedDriver.position?.charAt(0).toUpperCase() + assignedDriver.position?.slice(1) || 'Not assigned'}</p>
+                        <p>Position: {assignedDriver.position ? assignedDriver.position.charAt(0).toUpperCase() + assignedDriver.position.slice(1) : 'Not assigned'}</p>
                         <p>Email: {assignedDriver.email}</p>
                       </div>
                     </div>
