@@ -23,10 +23,10 @@ export const translations = {
         enable2FA: 'Enable 2FA'
       },
       account: {
-        title: 'Account',
-        profileInfo: 'Profile Information',
-        profileInfoDesc: 'Update your profile information and avatar',
-        editProfile: 'Edit Profile'
+        title: 'Fleet',
+        profileInfo: 'Fleet Images',
+        profileInfoDesc: 'Update the images of the fleet vehicles',
+        editProfile: 'Edit Fleet'
       },
       branding: {
         title: 'Branding',
@@ -184,10 +184,10 @@ export const translations = {
         enable2FA: 'Activar 2FA'
       },
       account: {
-        title: 'Cuenta',
-        profileInfo: 'Información del Perfil',
-        profileInfoDesc: 'Actualiza tu información de perfil y avatar',
-        editProfile: 'Editar Perfil'
+        title: 'Flota',
+        profileInfo: 'Imagenes de la Flota',
+        profileInfoDesc: 'Actualiza las images de los vehículos de la flota',
+        editProfile: 'Editar Flota'
       },
       branding: {
         title: 'Marca',
