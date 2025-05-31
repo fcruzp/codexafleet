@@ -40,7 +40,7 @@ function App() {
         {/* Protected app routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard\" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             
             {/* Vehicle routes */}
