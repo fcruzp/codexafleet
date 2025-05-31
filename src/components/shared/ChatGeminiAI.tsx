@@ -32,7 +32,10 @@ const ChatGeminiAI: React.FC = () => {
 
     const apiKey = getApiKey();
     if (!apiKey) {
-      toast.error('Please configure your OpenRouter API key in settings');
+      toast.error('Please configure your OpenRouter API key in settings', {
+        duration: 5000,
+        icon: '⚙️'
+      });
       return;
     }
 
@@ -40,6 +43,7 @@ const ChatGeminiAI: React.FC = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setLoading(true);
+
     try {
       const response = await fetch(OPENROUTER_API_URL, {
         method: 'POST',
@@ -52,14 +56,27 @@ const ChatGeminiAI: React.FC = () => {
           messages: getOpenAIMessages(),
         })
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      console.log('OpenRouter API response:', data);
-      const aiText = data.choices?.[0]?.message?.content || 'Sin respuesta de modelo AI.';
+      const aiText = data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response. Please try again.';
       setMessages((prev) => [...prev, { sender: 'ai', text: aiText }]);
     } catch (error) {
-      setMessages((prev) => [...prev, { sender: 'ai', text: 'Error al conectar con OpenRouter.' }]);
+      console.error('Error calling OpenRouter API:', error);
+      toast.error('Failed to get a response. Please check your API key and try again.', {
+        duration: 5000,
+        icon: '❌'
+      });
+      setMessages((prev) => [...prev, { 
+        sender: 'ai', 
+        text: 'Sorry, I encountered an error. Please try again or check your API key in settings.' 
+      }]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -69,7 +86,7 @@ const ChatGeminiAI: React.FC = () => {
         <button
           className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg focus:outline-none transition-colors duration-200"
           onClick={() => setOpen(true)}
-          aria-label="Abrir chat AI"
+          aria-label="Open AI chat"
         >
           <MessageCircle className="h-6 w-6" />
         </button>
@@ -78,11 +95,11 @@ const ChatGeminiAI: React.FC = () => {
       {open && (
         <div className="fixed bottom-6 right-6 z-50 w-80 max-w-full bg-white dark:bg-gray-800 rounded-lg shadow-2xl flex flex-col h-[500px] border border-gray-200 dark:border-gray-700 animate-fade-in transition-colors duration-200">
           <div className="flex items-center justify-between p-3 border-b dark:border-gray-700 bg-blue-600 rounded-t-lg">
-            <span className="text-white font-semibold">Asistente AI</span>
+            <span className="text-white font-semibold">AI Assistant</span>
             <button 
               onClick={() => setOpen(false)} 
               className="text-white hover:text-gray-200 transition-colors duration-200"
-              aria-label="Cerrar chat"
+              aria-label="Close chat"
             >
               <X className="h-5 w-5" />
             </button>
@@ -101,7 +118,7 @@ const ChatGeminiAI: React.FC = () => {
             ))}
             {loading && (
               <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                Modelo AI está escribiendo...
+                AI is thinking...
               </div>
             )}
           </div>
@@ -112,7 +129,7 @@ const ChatGeminiAI: React.FC = () => {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') sendMessage(); }}
-              placeholder="Escribe tu mensaje..."
+              placeholder="Type your message..."
               disabled={loading}
             />
             <button
@@ -120,7 +137,7 @@ const ChatGeminiAI: React.FC = () => {
               onClick={sendMessage}
               disabled={loading || !input.trim()}
             >
-              Enviar
+              Send
             </button>
           </div>
         </div>
