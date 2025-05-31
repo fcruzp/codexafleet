@@ -41,4 +41,4 @@ export async function handler(event, context) {
       headers: { "Content-Type": "application/json" },
     };
   }
-} 
+}
