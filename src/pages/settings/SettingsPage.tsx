@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Settings, Moon, Sun, Bell, Shield, Globe, Image, Key } from 'lucide-react';
+import { ArrowLeft, Settings, Moon, Sun, Bell, Shield, User, Globe, Image, Key } from 'lucide-react';
 import { useThemeStore } from '../../stores/theme-store';
 import { useLanguageStore } from '../../stores/language-store';
 import { useAuthStore } from '../../stores/auth-store';
@@ -28,19 +28,16 @@ export default function SettingsPage() {
     try {
       const { data, error } = await supabase.storage
         .from('user-images')
-        .list('logos', {
-          limit: 1,
-          sortBy: { column: 'created_at', order: 'desc' }
-        });
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        const { data: { publicUrl } } = supabase.storage
-          .from('user-images')
-          .getPublicUrl(`logos/${data[0].name}`);
-        setCurrentLogoUrl(publicUrl);
+        .list('logos');
+      if (error || !data || data.length === 0) {
+        setCurrentLogoUrl(null);
+        return;
       }
+      const logoFile = data[0];
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-images')
+        .getPublicUrl(`logos/${logoFile.name}`);
+      setCurrentLogoUrl(publicUrl);
     } catch (err) {
       console.error('Error fetching current logo:', err);
     }
@@ -109,6 +106,28 @@ export default function SettingsPage() {
                   placeholder="Enter your OpenRouter API key"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                 />
+              </div>
+            </div>
+
+            {/* Fleet Images Section */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t.account.title}</h2>
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-4">
+                <div className="flex items-center">
+                  <User className="h-5 w-5 text-gray-600 dark:text-gray-300 mr-3" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{t.account.profileInfo}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {t.account.profileInfoDesc}
+                    </p>
+                    <button
+                      className="mt-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
+                      onClick={() => setShowImageModal(true)}
+                    >
+                      {t.account.editProfile}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
