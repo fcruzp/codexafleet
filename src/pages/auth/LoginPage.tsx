@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { translations } from '../../translations';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { useThemeStore } from '../../stores/theme-store';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const { login } = useAuthStore();
   const { language } = useLanguageStore();
+  const { isDark } = useThemeStore();
   const t = translations[language].auth.login;
 
   useEffect(() => {
@@ -68,6 +70,11 @@ export default function LoginPage() {
             <h2 className="text-2xl font-bold text-center text-primary-600 dark:text-primary-400 mt-2">
               {t.title}
             </h2>
+            <img
+              src={isDark ? "/images/white_circle_360x360.png" : "/images/black_circle_360x360.png"}
+              alt="Powered by Bolt"
+              className="w-16 h-16 mt-4"
+            />
           </div>
         </div>
         {/* Separador vertical animado */}
