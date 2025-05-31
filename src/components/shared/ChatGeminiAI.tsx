@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
 
 const OPENROUTER_API_URL = "/.netlify/functions/chat-gemini";
-const OPENROUTER_MODEL = "google/gemini-2.5-pro-exp-03-25";
+const OPENROUTER_MODEL = "deepseek/deepseek-r1-0528:free";
 
 interface Message {
   sender: 'user' | 'ai';
@@ -15,9 +16,28 @@ const ChatGeminiAI: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
 
-  // Get API key from localStorage
-  const getApiKey = () => localStorage.getItem('OPENROUTER_API_KEY');
+  useEffect(() => {
+    fetchApiKey();
+  }, []);
+
+  const fetchApiKey = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('openrouter_key')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      setApiKey(data?.openrouter_key || null);
+    } catch (err) {
+      console.error('Error fetching API key:', err);
+      setApiKey(null);
+    }
+  };
 
   // Mensajes en formato OpenAI
   const getOpenAIMessages = () => {
@@ -30,9 +50,8 @@ const ChatGeminiAI: React.FC = () => {
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const apiKey = getApiKey();
     if (!apiKey) {
-      toast.error('Please configure your OpenRouter API key in settings', {
+      toast.error('Por favor, configure su OpenRouter API key en la configuración', {
         duration: 5000,
         icon: '⚙️'
       });
@@ -49,7 +68,6 @@ const ChatGeminiAI: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: OPENROUTER_MODEL,
@@ -62,17 +80,17 @@ const ChatGeminiAI: React.FC = () => {
       }
 
       const data = await response.json();
-      const aiText = data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response. Please try again.';
+      const aiText = data.choices?.[0]?.message?.content || 'Lo siento, no pude generar una respuesta. Por favor, intente de nuevo.';
       setMessages((prev) => [...prev, { sender: 'ai', text: aiText }]);
     } catch (error) {
       console.error('Error calling OpenRouter API:', error);
-      toast.error('Failed to get a response. Please check your API key and try again.', {
+      toast.error('Error al obtener respuesta. Por favor, verifique su API key e intente de nuevo.', {
         duration: 5000,
         icon: '❌'
       });
       setMessages((prev) => [...prev, { 
         sender: 'ai', 
-        text: 'Sorry, I encountered an error. Please try again or check your API key in settings.' 
+        text: 'Lo siento, encontré un error. Por favor, intente de nuevo o verifique su API key en la configuración.' 
       }]);
     } finally {
       setLoading(false);

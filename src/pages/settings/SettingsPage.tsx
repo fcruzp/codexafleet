@@ -18,11 +18,54 @@ export default function SettingsPage() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [showLogoModal, setShowLogoModal] = useState(false);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('OPENROUTER_API_KEY') || '');
+  const [apiKey, setApiKey] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchCurrentLogo();
+    fetchApiKey();
   }, []);
+
+  const fetchApiKey = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('openrouter_key')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      setApiKey(data?.openrouter_key || '');
+    } catch (err) {
+      console.error('Error fetching API key:', err);
+      toast.error('Error al cargar la API key');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApiKeyChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newKey = e.target.value;
+    setApiKey(newKey);
+    
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({
+          openrouter_key: newKey,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+      toast.success('API Key actualizada exitosamente');
+    } catch (err) {
+      console.error('Error updating API key:', err);
+      toast.error('Error al actualizar la API key');
+      // Revertir el cambio en el estado local
+      setApiKey(apiKey);
+    }
+  };
 
   const fetchCurrentLogo = async () => {
     try {
@@ -45,13 +88,6 @@ export default function SettingsPage() {
 
   const handleLogoUploadComplete = (url: string) => {
     setCurrentLogoUrl(url);
-  };
-
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newKey = e.target.value;
-    setApiKey(newKey);
-    localStorage.setItem('OPENROUTER_API_KEY', newKey);
-    toast.success('API Key updated successfully');
   };
 
   return (
@@ -86,9 +122,9 @@ export default function SettingsPage() {
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">API Key Configuration</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Configure your OpenRouter API key for the Gemini 2.5 Pro model.{' '}
+                        Configure your OpenRouter API key for the DeepSeek R1 model.{' '}
                         <a 
-                          href="https://openrouter.ai/models/google/gemini-2.5-pro-exp-03-25" 
+                          href="https://openrouter.ai/models/deepseek/deepseek-r1-0528:free" 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
@@ -99,13 +135,21 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={handleApiKeyChange}
-                  placeholder="Enter your OpenRouter API key"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-                />
+                <div className="space-y-2">
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={handleApiKeyChange}
+                    placeholder={isLoading ? "Cargando..." : "Por favor, introduzca su OpenRouter API Key"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                    disabled={isLoading}
+                  />
+                  {!apiKey && !isLoading && (
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                      ⚠️ La API Key es necesaria para usar el asistente de IA. Por favor, introduzca su OpenRouter API Key.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
