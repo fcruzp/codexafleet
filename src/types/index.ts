@@ -66,8 +66,8 @@ export interface Vehicle {
   createdAt: string;
 }
 
-type MaintenanceType = 'scheduled' | 'emergency' | 'repair';
-type MaintenanceStatus = 'pending' | 'inProgress' | 'completed' | 'cancelled';
+export type MaintenanceType = 'scheduled' | 'emergency' | 'repair';
+export type MaintenanceStatus = 'pending' | 'inProgress' | 'completed' | 'cancelled';
 
 export interface MaintenanceEvent {
   id: string;
@@ -111,7 +111,7 @@ export interface ServiceProvider {
   updatedAt: string;
 }
 
-interface Institution {
+export interface Institution {
   id: string;
   name: string;
   type: 'public' | 'private';
@@ -125,7 +125,7 @@ interface Institution {
   createdAt: string;
 }
 
-interface DashboardStats {
+export interface DashboardStats {
   totalVehicles: number;
   activeVehicles: number;
   inMaintenanceVehicles: number;
@@ -139,7 +139,7 @@ interface DashboardStats {
   }[];
 }
 
-interface Settings {
+export interface Settings {
   positions: Position[];
   departments: Department[];
 }
