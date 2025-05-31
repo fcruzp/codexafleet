@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MessageCircle, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_API_URL = "/.netlify/functions/chat-gemini";
 const OPENROUTER_MODEL = "google/gemini-2.5-pro-exp-03-25";
 
@@ -16,6 +16,9 @@ const ChatGeminiAI: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
+  // Get API key from localStorage
+  const getApiKey = () => localStorage.getItem('OPENROUTER_API_KEY');
+
   // Mensajes en formato OpenAI
   const getOpenAIMessages = () => {
     return messages.map((msg) => ({
@@ -26,6 +29,13 @@ const ChatGeminiAI: React.FC = () => {
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      toast.error('Please configure your OpenRouter API key in settings');
+      return;
+    }
+
     const userMessage: Message = { sender: 'user', text: input };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
@@ -35,7 +45,7 @@ const ChatGeminiAI: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: OPENROUTER_MODEL,
@@ -119,4 +129,4 @@ const ChatGeminiAI: React.FC = () => {
   );
 };
 
-export default ChatGeminiAI; 
+export default ChatGeminiAI;
