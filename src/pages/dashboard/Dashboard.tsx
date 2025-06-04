@@ -38,24 +38,24 @@ function Dashboard() {
       setLoadingStats(true);
       try {
         // Total de vehículos
-        const { count: totalVehicles } = await supabase
+        const { count: totalVehicles, error: vehiclesError } = await supabase
           .from('vehicles')
           .select('id', { count: 'exact', head: true });
 
         // Conductores activos
-        const { count: activeDrivers } = await supabase
+        const { count: activeDrivers, error: driversError } = await supabase
           .from('users')
           .select('id', { count: 'exact', head: true })
           .eq('role', 'driver');
 
         // Mantenimientos pendientes
-        const { count: pendingMaintenance } = await supabase
+        const { count: pendingMaintenance, error: maintenanceError } = await supabase
           .from('maintenance_events')
           .select('id', { count: 'exact', head: true })
           .eq('status', 'pending');
 
         // Servicios programados
-        const { count: scheduledServices } = await supabase
+        const { count: scheduledServices, error: servicesError } = await supabase
           .from('maintenance_events')
           .select('id', { count: 'exact', head: true })
           .eq('type', 'scheduled');
@@ -67,7 +67,7 @@ function Dashboard() {
           scheduledServices: scheduledServices || 0,
         });
       } catch (error) {
-        // Si hay error, dejar los valores en 0
+        console.error('Error fetching stats:', error);
         setStats({
           totalVehicles: 0,
           activeDrivers: 0,
@@ -98,11 +98,12 @@ function Dashboard() {
           const startOfWeek = new Date(now);
           startOfWeek.setDate(now.getDate() - 6);
           startOfWeek.setHours(0,0,0,0);
-          const { data: events } = await supabase
+          const { data: events, error: eventsError } = await supabase
             .from('maintenance_events')
             .select('id, start_date')
             .gte('start_date', startOfWeek.toISOString())
             .lte('start_date', now.toISOString());
+
           data = days.map(day => {
             const dayStr = day.toLocaleDateString('en-US', { weekday: 'short' });
             const count = events?.filter(e => {
@@ -117,31 +118,36 @@ function Dashboard() {
           const month = now.getMonth();
           const firstDay = new Date(year, month, 1);
           const lastDay = new Date(year, month + 1, 0);
-          const { data: events } = await supabase
+          
+          const { data: events, error: eventsError } = await supabase
             .from('maintenance_events')
             .select('id, start_date')
             .gte('start_date', firstDay.toISOString())
             .lte('start_date', lastDay.toISOString());
+
           // Calcular semana de cada evento
           const weeks = [0, 1, 2, 3, 4];
           data = weeks.map(weekIdx => {
             const weekStart = new Date(year, month, 1 + weekIdx * 7);
             const weekEnd = new Date(year, month, Math.min(1 + (weekIdx + 1) * 7 - 1, lastDay.getDate()));
+            
             const count = events?.filter(e => {
               const eventDate = new Date(e.start_date);
               return eventDate >= weekStart && eventDate <= weekEnd;
             }).length || 0;
-            return { name: `Week ${weekIdx + 1}`, value: count };
+            
+            return { name: `Semana ${weekIdx + 1}`, value: count };
           });
         } else if (timeRange === 'year') {
           // Agrupar por mes del año actual
           const year = now.getFullYear();
           const months = Array.from({ length: 12 }, (_, i) => i);
-          const { data: events } = await supabase
+          const { data: events, error: eventsError } = await supabase
             .from('maintenance_events')
             .select('id, start_date')
             .gte('start_date', new Date(year, 0, 1).toISOString())
             .lte('start_date', new Date(year, 11, 31, 23, 59, 59).toISOString());
+
           data = months.map(monthIdx => {
             const monthStart = new Date(year, monthIdx, 1);
             const monthEnd = new Date(year, monthIdx + 1, 0, 23, 59, 59);
@@ -149,11 +155,12 @@ function Dashboard() {
               const eventDate = new Date(e.start_date);
               return eventDate >= monthStart && eventDate <= monthEnd;
             }).length || 0;
-            return { name: monthStart.toLocaleString('en-US', { month: 'short' }), value: count };
+            return { name: monthStart.toLocaleString('es-ES', { month: 'short' }), value: count };
           });
         }
         setMaintenanceChartData(data);
       } catch (error) {
+        console.error('Error fetching chart data:', error);
         setMaintenanceChartData([]);
       } finally {
         setLoadingChart(false);
@@ -186,13 +193,14 @@ function Dashboard() {
 
         setActivityLogs(data || []);
       } catch (error) {
+        console.error('Error fetching logs:', error);
         setActivityLogs([]);
       } finally {
         setLoadingLogs(false);
       }
     };
-    fetchLogs(currentPage); // Llamar con la página actual
-  }, [currentPage]); // Dependencia: refetch logs cuando cambie la página
+    fetchLogs(currentPage);
+  }, [currentPage]);
 
   const statsData = [
     { label: t.stats.totalVehicles, value: stats.totalVehicles, icon: Car, color: 'text-blue-600 dark:text-blue-400' },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Plus, Filter, Car, User } from 'lucide-react';
 import { useLanguageStore } from '../../stores/language-store';
@@ -9,11 +9,33 @@ import toast from 'react-hot-toast';
 import { logActivity } from '../../lib/logActivity';
 import { useAuthStore } from '../../stores/auth-store';
 
+// Lazy load heavy components
+const VehicleCard = React.lazy(() => import('../../components/vehicles/VehicleCard'));
+const VehicleDetailsModal = React.lazy(() => import('../../components/vehicles/VehicleDetailsModal'));
+
 export default function VehicleList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | 'all'>('all');
   const { language } = useLanguageStore();
-  const t = translations[language].vehicles.list;
+  const t = translations[language]?.vehicles || {
+    title: 'Vehículos',
+    addVehicle: 'Agregar Vehículo',
+    searchPlaceholder: 'Buscar vehículos...',
+    details: {
+      year: 'Año',
+      licensePlate: 'Matrícula',
+      mileage: 'Kilometraje',
+      fuelType: 'Tipo de Combustible',
+      status: 'Estado',
+      driver: 'Conductor'
+    },
+    status: {
+      active: 'Activo',
+      maintenance: 'En Mantenimiento',
+      pendingMaintenance: 'Mantenimiento Pendiente',
+      outOfService: 'Fuera de Servicio'
+    }
+  };
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [drivers, setDrivers] = useState<Record<string, Driver>>({});
@@ -163,12 +185,15 @@ export default function VehicleList() {
     outOfService: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100',
   };
 
-  const handleDeleteVehicle = async (vehicle: Vehicle) => {
+  const handleDeleteVehicle = async (vehicleId: string) => {
     try {
+      const vehicle = vehicles.find(v => v.id === vehicleId);
+      if (!vehicle) return;
+
       const { error } = await supabase
         .from('vehicles')
         .delete()
-        .eq('id', vehicle.id);
+        .eq('id', vehicleId);
 
       if (error) throw error;
 
@@ -177,7 +202,7 @@ export default function VehicleList() {
         userId: user.id,
         action: 'delete',
         entity: 'vehicle',
-        entityId: vehicle.id,
+        entityId: vehicleId,
         description: `Eliminó el vehículo: ${vehicle.make} ${vehicle.model}`,
       });
 
@@ -243,81 +268,23 @@ export default function VehicleList() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredVehicles.map((vehicle) => {
-          const assignedDriver = vehicle.assignedDriverId ? drivers[vehicle.assignedDriverId] : null;
-          return (
-            <Link
-              key={vehicle.id}
-              to={`/vehicles/${vehicle.id}`}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden"
-            >
-              <div className="aspect-w-16 aspect-h-9 relative">
-                <img
-                  src={vehicle.imageUrl}
-                  alt={`${vehicle.make} ${vehicle.model}`}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="absolute top-4 right-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[vehicle.status]}`}>
-                    {vehicle.status === 'active' && 'Active'}
-                    {vehicle.status === 'maintenance' && 'In Maintenance'}
-                    {vehicle.status === 'pendingMaintenance' && 'Maintenance Pending'}
-                    {vehicle.status === 'outOfService' && 'Out of Service'}
-                  </span>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <Car className="h-8 w-8 text-primary-600 dark:text-primary-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                  {vehicle.make} {vehicle.model}
-                </h3>
-                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                  <p>{t.details.year}: {vehicle.year}</p>
-                  <p>{t.details.licensePlate}: {vehicle.licensePlate}</p>
-                  <p>{t.details.mileage}: {vehicle.mileage.toLocaleString()} km</p>
-                  <p>{t.details.fuelType}: {vehicle.fuelType.charAt(0).toUpperCase() + vehicle.fuelType.slice(1)}</p>
-                </div>
-                
-                {/* Driver Information */}
-                <div className="mt-4 pt-4 border-t dark:border-gray-700">
-                  <div className="flex items-center space-x-3">
-                    <User className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                    <div>
-                      {assignedDriver ? (
-                        <>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {assignedDriver.firstName} {assignedDriver.lastName}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {assignedDriver.position ? assignedDriver.position.charAt(0).toUpperCase() + assignedDriver.position.slice(1) : ''}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          No driver assigned
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-
-        {filteredVehicles.length === 0 && (
-          <div className="col-span-full text-center py-12">
-            <Car className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No vehicles found</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {searchTerm || statusFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Get started by adding a new vehicle'}
-            </p>
+        <Suspense fallback={
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
-        )}
+        }>
+          {filteredVehicles.map((vehicle) => {
+            const assignedDriver = vehicle.assignedDriverId ? drivers[vehicle.assignedDriverId] : null;
+            return (
+              <VehicleCard
+                key={vehicle.id}
+                vehicle={vehicle}
+                assignedDriver={assignedDriver}
+                onDelete={handleDeleteVehicle}
+              />
+            );
+          })}
+        </Suspense>
       </div>
     </div>
   );

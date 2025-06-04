@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Settings, Moon, Sun, Bell, Shield, User, Globe, Image, Key } from 'lucide-react';
+import { ArrowLeft, Settings, Moon, Sun, Bell, Shield, User, Globe, Image, Key, List } from 'lucide-react';
 import { useThemeStore } from '../../stores/theme-store';
 import { useLanguageStore } from '../../stores/language-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { translations } from '../../translations';
 import ImageUploadModal from '../../components/vehicles/ImageUploadModal';
 import LogoUploadModal from '../../components/settings/LogoUploadModal';
+import LLMModelsModal from '../../components/settings/LLMModelsModal';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -17,6 +18,7 @@ export default function SettingsPage() {
   const t = translations[language].settings;
   const [showImageModal, setShowImageModal] = useState(false);
   const [showLogoModal, setShowLogoModal] = useState(false);
+  const [showModelsModal, setShowModelsModal] = useState(false);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -114,26 +116,26 @@ export default function SettingsPage() {
           <div className="space-y-6">
             {/* OpenRouter API Key Section */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">OpenRouter API Key</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">API Key</h2>
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Key className="h-5 w-5 text-gray-600 dark:text-gray-300 mr-3" />
                     <div>
-                      <p className="font-medium text-gray-900 dark:text-white">API Key Configuration</p>
+                      <p className="font-medium text-gray-900 dark:text-white">Configuración de API Key</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Configure your OpenRouter API key for the DeepSeek R1 model.{' '}
-                        <a 
-                          href="https://openrouter.ai/models/deepseek/deepseek-r1-0528:free" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                        >
-                          Learn more about the model
-                        </a>
+                        Configure aquí su API Key para habilitar el uso de modelos de lenguaje de diferentes proveedores. 
+                        Consulte la documentación de cada proveedor para más detalles.
                       </p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => setShowModelsModal(true)}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center"
+                  >
+                    <List className="h-5 w-5 mr-2" />
+                    Gestionar Modelos
+                  </button>
                 </div>
                 <div className="space-y-2">
                   <input
@@ -244,7 +246,6 @@ export default function SettingsPage() {
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" className="sr-only peer" />
-                    
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
                   </label>
                 </div>
@@ -307,6 +308,11 @@ export default function SettingsPage() {
         onClose={() => setShowLogoModal(false)}
         onUploadComplete={handleLogoUploadComplete}
         currentLogoUrl={currentLogoUrl}
+      />
+
+      <LLMModelsModal
+        isOpen={showModelsModal}
+        onClose={() => setShowModelsModal(false)}
       />
     </div>
   );

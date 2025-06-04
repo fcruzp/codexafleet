@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
-import { ArrowLeft, Car, Calendar, User, PenTool as Tool, Fuel, Hash, Palette, FileText, Shield, Edit2, UserPlus, History, Image } from 'lucide-react';
+import { useParams, useNavigate, Link, Navigate } from 'react-router-dom';
+import { ArrowLeft, Car, Calendar, User, PenTool as Tool, Fuel, Hash, Palette, FileText, Shield, Edit2, UserPlus, History, Image, Trash2 } from 'lucide-react';
 import type { Vehicle, Driver } from '../../types';
 import AssignDriverModal from '../../components/vehicles/AssignDriverModal';
 import VehicleEditModal from '../../components/vehicles/VehicleEditModal';
@@ -9,9 +9,14 @@ import ImageUploadModal from '../../components/vehicles/ImageUploadModal';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { validate as uuidValidate } from 'uuid';
+import { useLanguageStore } from '../../stores/language-store';
+import { translations } from '../../translations';
+import { logActivity } from '../../lib/logActivity';
+import { useAuthStore } from '../../stores/auth-store';
 
 export default function VehicleDetails() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [isAssignDriverModalOpen, setIsAssignDriverModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showMaintenanceLog, setShowMaintenanceLog] = useState(false);
@@ -20,6 +25,27 @@ export default function VehicleDetails() {
   const [assignedDriver, setAssignedDriver] = useState<Driver | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { language } = useLanguageStore();
+  const t = translations[language]?.vehicles || {
+    title: 'Vehículos',
+    addVehicle: 'Agregar Vehículo',
+    searchPlaceholder: 'Buscar vehículos...',
+    details: {
+      year: 'Año',
+      licensePlate: 'Matrícula',
+      mileage: 'Kilometraje',
+      fuelType: 'Tipo de Combustible',
+      status: 'Estado',
+      driver: 'Conductor'
+    },
+    status: {
+      active: 'Activo',
+      maintenance: 'En Mantenimiento',
+      pendingMaintenance: 'Mantenimiento Pendiente',
+      outOfService: 'Fuera de Servicio'
+    }
+  };
+  const { user } = useAuthStore();
 
   useEffect(() => {
     if (!id || !uuidValidate(id)) {
@@ -27,166 +53,120 @@ export default function VehicleDetails() {
       setIsLoading(false);
       return;
     }
+
+    const fetchVehicle = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('vehicles')
+          .select(`
+            id,
+            make,
+            model,
+            year,
+            license_plate,
+            vin,
+            color,
+            status,
+            assigned_driver_id,
+            image_url,
+            mileage,
+            fuel_type,
+            created_at,
+            odometer_reading,
+            purchase_date
+          `)
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+
+        const mappedVehicle: Vehicle = {
+          id: data.id,
+          make: data.make,
+          model: data.model,
+          year: data.year,
+          licensePlate: data.license_plate,
+          vin: data.vin,
+          color: data.color,
+          status: data.status,
+          assignedDriverId: data.assigned_driver_id || undefined,
+          imageUrl: data.image_url || undefined,
+          mileage: data.mileage,
+          fuelType: data.fuel_type,
+          createdAt: data.created_at,
+          odometerReading: data.odometer_reading,
+          purchaseDate: data.purchase_date,
+        };
+
+        setVehicle(mappedVehicle);
+
+        if (mappedVehicle.assignedDriverId) {
+          const { data: driverData, error: driverError } = await supabase
+            .from('users')
+            .select(`
+              id,
+              email,
+              first_name,
+              last_name,
+              role,
+              position,
+              created_at
+            `)
+            .eq('id', mappedVehicle.assignedDriverId)
+            .single();
+
+          if (driverError) throw driverError;
+
+          const mappedDriver: Driver = {
+            id: driverData.id,
+            email: driverData.email,
+            firstName: driverData.first_name,
+            lastName: driverData.last_name,
+            role: driverData.role,
+            position: driverData.position || undefined,
+            createdAt: driverData.created_at,
+            licenseNumber: '',
+            licenseExpiry: '',
+            vehicleHistory: [],
+            isAvailable: true,
+          };
+
+          setAssignedDriver(mappedDriver);
+        }
+      } catch (error) {
+        console.error('Error fetching vehicle:', error);
+        toast.error('Failed to load vehicle details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchVehicle();
   }, [id]);
 
-  useEffect(() => {
-    if (vehicle?.assignedDriverId) {
-      fetchDriver(vehicle.assignedDriverId);
-    }
-  }, [vehicle?.assignedDriverId]);
-
-  const fetchVehicle = async () => {
-    try {
-      console.log('Fetching vehicle with ID:', id);
-      const { data, error: fetchError } = await supabase
-        .from('vehicles')
-        .select(`
-          id,
-          make,
-          model,
-          year,
-          license_plate,
-          vin,
-          color,
-          status,
-          assigned_driver_id,
-          image_url,
-          insurance_policy,
-          insurance_expiry,
-          last_maintenance_date,
-          next_maintenance_date,
-          mileage,
-          odometer_reading,
-          purchase_date,
-          fuel_type,
-          notes,
-          created_at
-        `)
-        .eq('id', id)
-        .single();
-
-      console.log('Vehicle fetch response:', { 
-        data, 
-        error: fetchError,
-        assignedDriverId: data?.assigned_driver_id 
-      });
-
-      if (fetchError) throw fetchError;
-
-      if (!data) {
-        setError('Vehicle not found');
-        return;
-      }
-
-      setVehicle({
-        id: data.id,
-        make: data.make,
-        model: data.model,
-        year: data.year,
-        licensePlate: data.license_plate,
-        vin: data.vin,
-        color: data.color,
-        status: data.status,
-        assignedDriverId: data.assigned_driver_id || undefined,
-        imageUrl: data.image_url || undefined,
-        insurancePolicy: data.insurance_policy || undefined,
-        insuranceExpiry: data.insurance_expiry || undefined,
-        lastMaintenanceDate: data.last_maintenance_date || undefined,
-        nextMaintenanceDate: data.next_maintenance_date || undefined,
-        mileage: data.mileage,
-        odometerReading: data.odometer_reading,
-        purchaseDate: data.purchase_date,
-        fuelType: data.fuel_type,
-        notes: data.notes || undefined,
-        createdAt: data.created_at,
-      });
-    } catch (err) {
-      console.error('Error fetching vehicle details:', {
-        error: err,
-        vehicleId: id,
-        timestamp: new Date().toISOString()
-      });
-      setError('Failed to load vehicle data');
-      toast.error('Failed to load vehicle data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchDriver = async (driverId: string) => {
-    try {
-      console.log('Fetching driver with ID:', driverId);
-      const { data, error: fetchError } = await supabase
-        .from('users')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          role,
-          position,
-          image_url,
-          license_image_url,
-          created_at
-        `)
-        .eq('id', driverId)
-        .single();
-
-      console.log('Driver fetch response:', { data, error: fetchError });
-
-      if (fetchError) {
-        console.error('Driver fetch error details:', fetchError);
-        throw fetchError;
-      }
-
-      if (!data) {
-        console.log('No driver data found for ID:', driverId);
-        setAssignedDriver(null);
-        return;
-      }
-
-      console.log('Setting driver data:', data);
-      setAssignedDriver({
-        id: data.id,
-        email: data.email,
-        firstName: data.first_name,
-        lastName: data.last_name,
-        role: data.role,
-        position: data.position || undefined,
-        imageUrl: data.image_url || undefined,
-        licenseImageUrl: data.license_image_url || undefined,
-        createdAt: data.created_at,
-        licenseNumber: '',
-        licenseExpiry: '',
-        vehicleHistory: [],
-        isAvailable: true,
-      });
-    } catch (err) {
-      console.error('Error fetching driver details:', {
-        error: err,
-        driverId,
-        timestamp: new Date().toISOString()
-      });
-      toast.error('Failed to load driver information');
-      setAssignedDriver(null);
-    }
-  };
-
   const handleAssignDriver = async (driverId: string) => {
     try {
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('vehicles')
         .update({ assigned_driver_id: driverId })
         .eq('id', id);
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
-      await fetchDriver(driverId);
-      setIsAssignDriverModalOpen(false);
+      if (!user) throw new Error('Usuario no autenticado');
+      await logActivity({
+        userId: user.id,
+        action: 'update',
+        entity: 'vehicle',
+        entityId: id!,
+        description: `Asignó un conductor al vehículo: ${vehicle?.make} ${vehicle?.model}`,
+      });
+
       toast.success('Driver assigned successfully');
-    } catch (err) {
-      console.error('Error assigning driver:', err);
+      navigate('/vehicles');
+    } catch (error) {
+      console.error('Error assigning driver:', error);
       toast.error('Failed to assign driver');
     }
   };
@@ -242,6 +222,32 @@ export default function VehicleDetails() {
     } catch (err) {
       console.error('Error updating vehicle image:', err);
       toast.error('Failed to update vehicle image');
+    }
+  };
+
+  const handleDeleteVehicle = async () => {
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      if (!user) throw new Error('Usuario no autenticado');
+      await logActivity({
+        userId: user.id,
+        action: 'delete',
+        entity: 'vehicle',
+        entityId: id!,
+        description: `Eliminó el vehículo: ${vehicle?.make} ${vehicle?.model}`,
+      });
+
+      toast.success('Vehicle deleted successfully');
+      navigate('/vehicles');
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      toast.error('Failed to delete vehicle');
     }
   };
 
@@ -341,6 +347,13 @@ export default function VehicleDetails() {
           >
             <Edit2 className="h-5 w-5 mr-2" />
             Edit Vehicle
+          </button>
+          <button
+            onClick={handleDeleteVehicle}
+            className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            <Trash2 className="h-5 w-5 mr-2" />
+            Delete
           </button>
         </div>
       </div>

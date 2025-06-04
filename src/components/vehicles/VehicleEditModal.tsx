@@ -56,9 +56,7 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
           role,
           position,
           image_url,
-          created_at,
-          license_number,
-          license_expiry
+          created_at
         `)
         .eq('role', 'driver')
         .order('first_name');
@@ -89,8 +87,8 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
           position: driver.position || undefined,
           imageUrl: driver.image_url || undefined,
           createdAt: driver.created_at,
-          licenseNumber: driver.license_number || '',
-          licenseExpiry: driver.license_expiry || '',
+          licenseNumber: '',
+          licenseExpiry: '',
           vehicleHistory: [],
           isAvailable: true,
         }));
@@ -138,13 +136,18 @@ export default function VehicleEditModal({ vehicle, isOpen, onClose, onSave }: V
 
       // Registrar log
       if (user) {
-        await logActivity({
-          userId: user.id,
-          action: 'update',
-          entity: 'vehicle',
-          entityId: vehicle.id,
-          description: `Editó el vehículo: ${data.make} ${data.model}`,
-        });
+        try {
+          await logActivity({
+            userId: user.id,
+            action: 'update',
+            entity: 'vehicle',
+            entityId: vehicle.id,
+            description: `Editó el vehículo: ${data.make} ${data.model}`,
+          });
+        } catch (logError) {
+          console.warn('No se pudo registrar la actividad:', logError);
+          // No lanzamos el error para no interrumpir el flujo principal
+        }
       }
 
       onSave(data);

@@ -98,65 +98,22 @@ export const translations = {
       }
     },
     vehicles: {
-      list: {
-        title: 'Vehicle Fleet',
-        addVehicle: 'Add Vehicle',
-        searchPlaceholder: 'Search vehicles...',
-        filterStatus: {
-          all: 'All Status',
-          active: 'Active',
-          maintenance: 'In Maintenance',
-          outOfService: 'Out of Service'
-        },
-        details: {
-          year: 'Year',
-          licensePlate: 'License Plate',
-          mileage: 'Mileage',
-          fuelType: 'Fuel Type'
-        }
+      title: 'Vehicles',
+      addVehicle: 'Add Vehicle',
+      searchPlaceholder: 'Search vehicles...',
+      details: {
+        year: 'Year',
+        licensePlate: 'License Plate',
+        mileage: 'Mileage',
+        fuelType: 'Fuel Type',
+        status: 'Status',
+        driver: 'Driver'
       },
-      add: {
-        title: 'Add New Vehicle',
-        backToVehicles: 'Back to Vehicles',
-        basicInfo: {
-          title: 'Basic Information',
-          make: 'Make',
-          model: 'Model',
-          year: 'Year',
-          color: 'Color'
-        },
-        vehicleDetails: {
-          title: 'Vehicle Details',
-          licensePlate: 'License Plate',
-          vin: 'VIN',
-          mileage: 'Mileage',
-          fuelType: 'Fuel Type',
-          selectFuelType: 'Select Fuel Type',
-          fuelTypes: {
-            gasoline: 'Gasoline',
-            diesel: 'Diesel',
-            electric: 'Electric',
-            hybrid: 'Hybrid'
-          }
-        },
-        additionalInfo: {
-          title: 'Additional Information',
-          notes: 'Notes',
-          imageUrl: 'Image URL',
-          insurancePolicy: 'Insurance Policy',
-          insuranceExpiry: 'Insurance Expiry Date'
-        },
-        buttons: {
-          cancel: 'Cancel',
-          save: 'Save Vehicle',
-          saving: 'Saving...'
-        },
-        validation: {
-          required: 'This field is required',
-          yearRange: 'Year must be between 1900 and current year',
-          invalidVin: 'Invalid VIN format',
-          negativeMileage: 'Mileage cannot be negative'
-        }
+      status: {
+        active: 'Active',
+        maintenance: 'In Maintenance',
+        pendingMaintenance: 'Maintenance Pending',
+        outOfService: 'Out of Service'
       }
     }
   },
@@ -259,65 +216,22 @@ export const translations = {
       }
     },
     vehicles: {
-      list: {
-        title: 'Flota de Vehículos',
-        addVehicle: 'Añadir Vehículo',
-        searchPlaceholder: 'Buscar vehículos...',
-        filterStatus: {
-          all: 'Todos los Estados',
-          active: 'Activo',
-          maintenance: 'En Mantenimiento',
-          outOfService: 'Fuera de Servicio'
-        },
-        details: {
-          year: 'Año',
-          licensePlate: 'Matrícula',
-          mileage: 'Kilometraje',
-          fuelType: 'Tipo de Combustible'
-        }
+      title: 'Vehículos',
+      addVehicle: 'Agregar Vehículo',
+      searchPlaceholder: 'Buscar vehículos...',
+      details: {
+        year: 'Año',
+        licensePlate: 'Matrícula',
+        mileage: 'Kilometraje',
+        fuelType: 'Tipo de Combustible',
+        status: 'Estado',
+        driver: 'Conductor'
       },
-      add: {
-        title: 'Añadir Nuevo Vehículo',
-        backToVehicles: 'Volver a Vehículos',
-        basicInfo: {
-          title: 'Información Básica',
-          make: 'Marca',
-          model: 'Modelo',
-          year: 'Año',
-          color: 'Color'
-        },
-        vehicleDetails: {
-          title: 'Detalles del Vehículo',
-          licensePlate: 'Matrícula',
-          vin: 'VIN',
-          mileage: 'Kilometraje',
-          fuelType: 'Tipo de Combustible',
-          selectFuelType: 'Seleccionar Tipo de Combustible',
-          fuelTypes: {
-            gasoline: 'Gasolina',
-            diesel: 'Diésel',
-            electric: 'Eléctrico',
-            hybrid: 'Híbrido'
-          }
-        },
-        additionalInfo: {
-          title: 'Información Adicional',
-          notes: 'Notas',
-          imageUrl: 'URL de la Imagen',
-          insurancePolicy: 'Póliza de Seguro',
-          insuranceExpiry: 'Fecha de Vencimiento del Seguro'
-        },
-        buttons: {
-          cancel: 'Cancelar',
-          save: 'Guardar Vehículo',
-          saving: 'Guardando...'
-        },
-        validation: {
-          required: 'Este campo es obligatorio',
-          yearRange: 'El año debe estar entre 1900 y el año actual',
-          invalidVin: 'Formato de VIN inválido',
-          negativeMileage: 'El kilometraje no puede ser negativo'
-        }
+      status: {
+        active: 'Activo',
+        maintenance: 'En Mantenimiento',
+        pendingMaintenance: 'Mantenimiento Pendiente',
+        outOfService: 'Fuera de Servicio'
       }
     }
   }
